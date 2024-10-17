@@ -12,7 +12,7 @@ const icons = {
 }
 
 export const ControlsPanel: FC<{
-  selectedRow: any;
+  selectedRow: Record<string, Column>
   selectedColumn: Column;
   addRow: () => void;
   deleteRow: () => void;

@@ -88,7 +88,7 @@ export const EditorStaticExample: FC = () => {
 
   return (
     <div className="editor">
-      <Stage onSelect={() => console.log("Stage selected")}>
+      <Stage>
         {!Object.keys(rows).length && <h5 className="text-align-center">Add first row to begin</h5>}
         {Object.keys(rows).map((rowId) => (
           <Row
