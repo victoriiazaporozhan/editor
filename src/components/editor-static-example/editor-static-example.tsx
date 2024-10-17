@@ -1,252 +1,129 @@
-import { FC, useState } from "react";
+import { FC, useState, useEffect } from "react";
 import { v4 as uuidv4 } from 'uuid';
 import { Column } from "../column";
-import { Icons } from "../icons";
-import { ImagePlaceholder } from "../image-placeholder";
 import { Markdown } from "../markdown";
 import { Row } from "../row";
 import { Stage } from "../stage";
+import { ImageField } from "../image-field";
+import { Columns, SelectedElement, TextAlignment } from "../../types";
+import { ControlsPanel } from "../controls-panel";
 
 export const EditorStaticExample: FC = () => {
-  interface Column {
-    type?: 'text' | 'image';
-    title: string;
-    alignment: 'center' | 'left' | 'right';
-    imageUrl: string
-  }
-  
-  type Columns = Record<string, Column>
+  const [selectedElement, setSelectedElement] = useState<SelectedElement>({ rowId: null, columnId: null });
 
-  interface SelectedRow {
-    rowId: string | null;
-    columnId: string | null;
-  }
+  const [rows, setRows] = useState<Record<string, Columns>>(() => {
+    const persistedRows = localStorage.getItem("rows");
+    return persistedRows ? JSON.parse(persistedRows) : {};
+  });
 
-  const [rows, setRows] = useState<Record<string, Columns>>({})
-  const [selectedRow, setSelectedRow] = useState<SelectedRow>({ rowId: null, columnId: null })
+  useEffect(() => {
+    localStorage.setItem("rows", JSON.stringify(rows));
+  }, [rows]);
 
   const addRow = () => {
     const rowId = uuidv4()
-  
     setRows({
       ...rows,
       [rowId]: {}
     })
 
-    setSelectedRow({ rowId, columnId: null })
+    setSelectedElement({ rowId, columnId: null })
   }
 
   const addColumn = () => {
     const columnId = uuidv4()
-    const newValue = {...rows};
+    const updatedRows = {...rows};
 
-    newValue[selectedRow.rowId!][columnId] = {
-      title: '',
+    updatedRows[selectedElement.rowId!][columnId] = {
+      description: '',
       alignment: 'center',
       imageUrl: ''
     };
 
-    setRows(newValue)
-    setSelectedRow({...selectedRow, columnId})
+    setRows(updatedRows)
+    setSelectedElement({...selectedElement, columnId})
   }
 
-  const changeAlignment = (alignment: 'left' | 'center' | 'right') => {
-    if (selectedRow.rowId && selectedRow.columnId) {
-      const newValue = {...rows};
+  const changeAlignment = (alignment: TextAlignment) => {
+    const updatedRows = {...rows};
+    updatedRows[selectedElement.rowId!][selectedElement.columnId!].alignment = alignment;
   
-      newValue[selectedRow.rowId][selectedRow.columnId].alignment = alignment;
-      setRows(newValue)
-    }
+    setRows(updatedRows)
   }
 
   const changeType = (type: 'text' | 'image') => {
-    const newValue = {...rows};
-
-    newValue[selectedRow.rowId!][selectedRow.columnId!].type = type;
-    setRows(newValue)
+    const updatedRows = {...rows};
+    updatedRows[selectedElement.rowId!][selectedElement.columnId!].type = type;
+    setRows(updatedRows)
   }
 
   const deleteColumn = () => {
     const newValue = {...rows}
-    delete newValue[selectedRow.rowId!][selectedRow.columnId!]
-    selectedRow.columnId = null;
+    delete newValue[selectedElement.rowId!][selectedElement.columnId!]
+    selectedElement.columnId = null;
     setRows(newValue)
   }
 
   const deleteRow = () => {
     const newValue = {...rows}
-    delete newValue[selectedRow.rowId!]
-    selectedRow.rowId = null;
+    delete newValue[selectedElement.rowId!]
+    selectedElement.rowId = null;
+  
     setRows(newValue)
+  }
+
+  const changeDescription = (value: string) => {
+    const newRows = {...rows};
+    newRows[selectedElement.rowId!][selectedElement.columnId!].description = value;
+
+    setRows(newRows)
+  }
+
+  const changeImageUrl = (value: string) => {
+    const newRows = {...rows};
+    newRows[selectedElement.rowId!][selectedElement.columnId!].imageUrl = value;
+
+    setRows(newRows)
   }
 
   return (
     <div className="editor">
       <Stage onSelect={() => console.log("Stage selected")}>
         {!Object.keys(rows).length && <h5 className="text-align-center">Add first row to begin</h5>}
-        {Object.keys(rows).map((rowId) => {
-            return (
-              <Row
-                key={rowId}
-                onSelect={() => setSelectedRow({ rowId, columnId: null })}
-                selected={!selectedRow.columnId && selectedRow.rowId === rowId}
-              >
-                {Object.keys(rows[rowId]).map((columnId) => {
-                  const column = rows[rowId][columnId]
-                  return (
-                    <Column
-                      key={columnId}
-                      onSelect={() => setSelectedRow({ rowId, columnId})}
-                      selected={selectedRow.columnId === columnId}
-                    >
-                      { column.type === 'text' &&
-                        <Markdown className={`text-align-${column.alignment}`}>
-                          { column.title }
-                        </Markdown>
-                      }
-                      { column.type === 'image' && (
-                        column.imageUrl ? 
-                          <img src={column.imageUrl} alt="" />
-                          :
-                          <ImagePlaceholder />
-                        )
-                      }
-                    </Column>
-                  )
-                })}
-              </Row>
-            )
-          })
-        }
+        {Object.keys(rows).map((rowId) => (
+          <Row
+            key={rowId}
+            onSelect={() => setSelectedElement({ rowId, columnId: null })}
+            selected={!selectedElement.columnId && selectedElement.rowId === rowId}
+          >
+            {Object.keys(rows[rowId]).map((columnId) => {
+              const column = rows[rowId][columnId]
+
+              return (
+                <Column
+                  key={columnId}
+                  onSelect={() => setSelectedElement({ rowId, columnId})}
+                  selected={selectedElement.columnId === columnId}
+                >
+                  {column.type === 'text' && <Markdown className={`text-align-${column.alignment}`}>{ column.description }</Markdown>}
+                  {column.type === 'image' && <ImageField src={column.imageUrl} /> }
+                </Column>)
+            })}
+          </Row>
+        ))}
       </Stage>
-
-      <div className="properties">
-        <div className="section">
-          <div className="section-header">Page</div>
-          <div className="actions">
-            <button title="Add new row" className="action" onClick={addRow}>Add row</button>
-          </div>
-        </div>
-
-        {selectedRow.rowId && <div className="section">
-          <div className="button-group-field">
-            <label>Row</label>
-            { selectedRow.rowId &&
-              <button
-                onClick={deleteRow}
-                className="button"
-                title="Delete selected row"
-              >
-                <Icons.Delete />
-              </button>
-            }
-          </div>
-          <div className="actions">
-            <button title="Add new column" className="action" onClick={addColumn}>Add column</button>
-          </div>
-        </div>}
-
-        { selectedRow.columnId && selectedRow.rowId && <div className="section">
-          <div className="button-group-field">
-            <label>Column</label>
-            { selectedRow.columnId &&
-              <button 
-                onClick={deleteColumn}
-                className="button"
-                title="Delete selected column"
-              >
-                <Icons.Delete />
-              </button>
-            }
-          </div>
-          <div className="button-group-field">
-            <label>Contents</label>
-            <div className="button-group">
-              <button
-                title="Insert Text"
-                onClick={() => changeType('text')}
-                className={rows[selectedRow.rowId][selectedRow.columnId].type === 'text' ? 'selected' : ''}
-              >
-                <Icons.Text />
-              </button>
-              <button
-                title="Insert Image"
-                onClick={() => changeType('image')}
-                className={rows[selectedRow.rowId][selectedRow.columnId].type === 'image' ? 'selected' : ''}
-              >
-                <Icons.Image />
-              </button>
-            </div>
-          </div>
-        </div>}
-
-        {selectedRow.rowId && selectedRow.columnId && 
-          <>
-           { rows[selectedRow.rowId][selectedRow.columnId].type === 'text' && <div className="section">
-              <div className="section-header">Text</div>
-              <div className="button-group-field">
-                <label>Alignment</label>
-                <div className="button-group">
-                  <button 
-                    title="Left"
-                    onClick={() => changeAlignment('left')}
-                    className={rows[selectedRow.rowId][selectedRow.columnId].alignment === 'left' ? 'selected' : ''}
-                  >
-                    <Icons.TextAlignLeft />
-                  </button>
-                  <button 
-                    title="Center"
-                    onClick={() => changeAlignment('center')}
-                    className={rows[selectedRow.rowId][selectedRow.columnId].alignment === 'center' ? 'selected' : ''}>
-                    <Icons.TextAlignCenter />
-                  </button>
-                  <button
-                    title="Right"
-                    onClick={() => changeAlignment('right')}
-                    className={rows[selectedRow.rowId][selectedRow.columnId].alignment === 'right' ? 'selected' : ''}>
-                    <Icons.TextAlignRight />
-                  </button>
-                </div>
-              </div>
-              <div className="textarea-field">
-                <textarea
-                  rows={8}
-                  placeholder="Enter text" 
-                  onChange={(e) => {
-                    if (selectedRow.rowId && selectedRow.columnId) {
-                      const newRows = {...rows};
-
-                      newRows[selectedRow.rowId][selectedRow.columnId].title = e.target.value;
-                      setRows(newRows)
-                    }
-                  }}
-                  value={rows[selectedRow.rowId][selectedRow.columnId].title}
-                ></textarea>
-              </div>
-            </div>}
-            
-            {rows[selectedRow.rowId][selectedRow.columnId].type === 'image' && <div className="section">
-              <div className="section-header">Image</div>
-              <div className="text-field">
-                <label htmlFor="image-url">URL</label>
-                <input 
-                  id="image-url" 
-                  type="text" 
-                  onChange={(e) => {
-                    if (selectedRow.rowId && selectedRow.columnId) {
-                      const newRows = {...rows};
-
-                      newRows[selectedRow.rowId][selectedRow.columnId].imageUrl = e.target.value;
-                      setRows(newRows)
-                    }
-                  }}
-                  value={rows[selectedRow.rowId][selectedRow.columnId].imageUrl}
-                />
-              </div>
-            </div>}
-          </>
-        }
-
-      </div>
+      
+      <ControlsPanel
+        addColumn={addColumn}
+        addRow={addRow}
+        changeAlignment={changeAlignment}
+        changeType={changeType}
+        deleteColumn={deleteColumn}
+        deleteRow={deleteRow}
+        selectedRow={rows[selectedElement.rowId!]}
+        selectedColumn={rows[selectedElement.rowId!]?.[selectedElement.columnId!]}
+        changeDescription={changeDescription}
+        changeImageUrl={changeImageUrl}
+      />
     </div>
 )};
