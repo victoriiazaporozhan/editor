@@ -132,6 +132,7 @@ h6 {
   flex: 1 1 0;
   min-width: 0;
   overflow-wrap: break-word;
+  min-height: 24.5px;
 }
 
 .column:empty {
@@ -208,7 +209,7 @@ h6 {
   outline-offset: 1px;
 }
 
-.action.danger {
+.action.danger, .warning {
   color: #f24822;
 }
 
@@ -269,7 +270,7 @@ h6 {
   border-radius: 2px;
 }
 
-.button-group > button {
+.button-group > button, .button {
   all: unset;
   box-sizing: border-box;
   display: grid;
